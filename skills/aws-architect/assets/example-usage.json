@@ -1,0 +1,28 @@
+{
+ "name": "Example - event photo face search (startup, indicative, eu-west-1)",
+ "region": "eu-west-1",
+ "services": [
+  {"service": "rekognitionImage", "description": "Face indexing (8k photos/mo) and selfie search (2.4k/mo)",
+   "fields": {"indexFacesAPI": [8000, "perMonth"], "searchFacesbyImageAPI": [2400, "perMonth"],
+              "facesStored": [120000, "perMonth"]}},
+  {"service": "amazonS3Standard", "description": "Event photo bucket (100 GB stored)",
+   "fields": {"s3StandardStorageSize": [100, "gb"], "s3StandardPutRequests": 8000,
+              "s3StandardGetRequests": 60000}},
+  {"service": "aWSLambda", "description": "Index, search and cleanup functions",
+   "fields": {"numberOfRequests": [10500, "perMonth"], "durationOfEachRequest": 1500,
+              "sizeOfMemoryAllocated": [512, "mb"]}},
+  {"service": "dynamoDbOnDemand", "description": "Face-to-photo map",
+   "fields": {"dataStorageSize": [1, "gb"], "writeRateId": [40000, "perMonth"],
+              "readRateId": [100000, "perMonth"]}},
+  {"service": "amazonSimpleQueueService", "description": "Index queue",
+   "fields": {"standardQueueRequests": [0.1, "perMonth"]}},
+  {"service": "amazonApiGateway", "description": "Upload and search API (REST)",
+   "fields": {"RESTMult": "1", "numberOfRESTRequests": [15000, "perMonth"]}},
+  {"service": "amazonCloudFront", "template": "CDN", "description": "Photo delivery to attendees (Africa)",
+   "fields": {"dataTransferedToInternet_SA": [50, "gb"], "numberOfHttpsRequests_SA": [20000, "perMonth"]}},
+  {"service": "awsKeyManagementService", "description": "Key for photos and table",
+   "fields": {"numberOfCmk": 1, "numberOfSymmetricRequests": 20000}},
+  {"service": "amazonCloudWatch", "description": "Logs and alarms",
+   "fields": {"sizeOfStandardLogsDataIngested": [2, "gb"], "numberOfStandardAlarms": 5}}
+ ]
+}

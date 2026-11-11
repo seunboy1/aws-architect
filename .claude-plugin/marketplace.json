@@ -1,0 +1,16 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-marketplace.json",
+  "name": "aws-architect",
+  "owner": {"name": "Oluwaseun Adeyo", "url": "https://github.com/seunboy1"},
+  "description": "AWS architecture diagrams and calculator.aws cost estimates for agents.",
+  "plugins": [
+    {
+      "name": "aws-architect",
+      "source": "./",
+      "description": "Turn a call transcript, SOW or a few questions into an editable AWS architecture diagram (draw.io) and a shareable AWS Pricing Calculator link.",
+      "license": "MIT",
+      "category": "productivity",
+      "keywords": ["aws", "architecture", "diagram", "drawio", "cost-estimate", "pricing-calculator", "solutions-architect"]
+    }
+  ]
+}

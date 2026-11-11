@@ -1,0 +1,25 @@
+{
+  "name": "aws-architect",
+  "version": "1.0.0",
+  "description": "Turn a call transcript, SOW or a few questions into an editable AWS architecture diagram (draw.io) and a shareable AWS Pricing Calculator link.",
+  "author": {"name": "Oluwaseun Adeyo", "url": "https://github.com/seunboy1"},
+  "homepage": "https://github.com/seunboy1/aws-architect",
+  "repository": "https://github.com/seunboy1/aws-architect",
+  "license": "MIT",
+  "keywords": ["aws", "architecture", "diagram", "drawio", "cost-estimate", "pricing-calculator", "solutions-architect"],
+  "skills": "./skills/",
+  "interface": {
+    "displayName": "AWS Architect",
+    "shortDescription": "AWS diagrams and cost estimates",
+    "longDescription": "Turn a call transcript, SOW or a few questions into an editable AWS architecture diagram (draw.io) and a shareable AWS Pricing Calculator link.",
+    "developerName": "Oluwaseun Adeyo",
+    "category": "Productivity",
+    "capabilities": ["Instructions"],
+    "websiteURL": "https://github.com/seunboy1/aws-architect",
+    "defaultPrompt": [
+      "Here's the call transcript. Draw the AWS architecture and give me a cost estimate link.",
+      "Create an AWS architecture diagram for this SOW.",
+      "How much will this cost on AWS? Give me a calculator link."
+    ]
+  }
+}

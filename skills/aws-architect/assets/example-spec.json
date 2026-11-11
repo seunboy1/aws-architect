@@ -1,0 +1,267 @@
+{
+ "title": "Order intake (example)",
+ "subtitle": "Generic example for the aws-architect skill",
+ "footnote": "Managed services sit outside the VPC; only the worker that needs the database runs inside it.",
+ "canvas": {
+  "width": 1520,
+  "height": 960
+ },
+ "groups": [
+  {
+   "id": "acct",
+   "label": "AWS account \u00b7 production",
+   "kind": "account",
+   "x": 200,
+   "y": 60,
+   "w": 1280,
+   "h": 850,
+   "parent": null
+  },
+  {
+   "id": "edge",
+   "label": "Edge and API \u00b7 outside the VPC",
+   "kind": "zone",
+   "x": 230,
+   "y": 100,
+   "w": 900,
+   "h": 170,
+   "parent": "acct"
+  },
+  {
+   "id": "vpc",
+   "label": "VPC",
+   "kind": "vpc",
+   "x": 230,
+   "y": 310,
+   "w": 900,
+   "h": 410,
+   "parent": "acct"
+  },
+  {
+   "id": "priv",
+   "label": "Private subnet",
+   "kind": "private_subnet",
+   "x": 250,
+   "y": 355,
+   "w": 860,
+   "h": 345,
+   "parent": "vpc"
+  },
+  {
+   "id": "managed",
+   "label": "Managed services \u00b7 outside the VPC",
+   "kind": "zone",
+   "x": 1160,
+   "y": 310,
+   "w": 280,
+   "h": 410,
+   "parent": "acct"
+  },
+  {
+   "id": "sec",
+   "label": "Security and observability \u00b7 applies to everything",
+   "kind": "zone",
+   "x": 230,
+   "y": 745,
+   "w": 1210,
+   "h": 140,
+   "parent": "acct"
+  }
+ ],
+ "nodes": [
+  {
+   "id": "user",
+   "label": "Customer",
+   "sub": "web or mobile",
+   "icon": "user",
+   "cx": 100,
+   "top": 140,
+   "parent": null,
+   "label_pos": "bottom"
+  },
+  {
+   "id": "cf",
+   "label": "CloudFront",
+   "sub": "static site and API edge",
+   "icon": "cloudfront",
+   "cx": 300,
+   "top": 140,
+   "parent": "edge",
+   "label_pos": "bottom"
+  },
+  {
+   "id": "apigw",
+   "label": "API Gateway",
+   "sub": "REST API",
+   "icon": "api_gateway",
+   "cx": 480,
+   "top": 140,
+   "parent": "edge",
+   "label_pos": "bottom"
+  },
+  {
+   "id": "api",
+   "label": "API Lambda",
+   "sub": "validates, enqueues",
+   "icon": "lambda",
+   "cx": 660,
+   "top": 140,
+   "parent": "edge",
+   "label_pos": "bottom"
+  },
+  {
+   "id": "sqs",
+   "label": "Orders queue",
+   "sub": "FIFO",
+   "icon": "sqs",
+   "cx": 840,
+   "top": 140,
+   "parent": "edge",
+   "label_pos": "top"
+  },
+  {
+   "id": "dlq",
+   "label": "Dead-letter queue",
+   "sub": "failed orders",
+   "icon": "sqs",
+   "cx": 1020,
+   "top": 140,
+   "parent": "edge",
+   "label_pos": "bottom"
+  },
+  {
+   "id": "worker",
+   "label": "Worker Lambda",
+   "sub": "in the VPC",
+   "icon": "lambda",
+   "cx": 840,
+   "top": 400,
+   "parent": "priv",
+   "label_pos": "left"
+  },
+  {
+   "id": "aurora",
+   "label": "Aurora PostgreSQL",
+   "sub": "orders data",
+   "icon": "aurora",
+   "cx": 840,
+   "top": 540,
+   "parent": "priv",
+   "label_pos": "bottom"
+  },
+  {
+   "id": "ddb",
+   "label": "DynamoDB",
+   "sub": "idempotency keys",
+   "icon": "dynamodb",
+   "cx": 1300,
+   "top": 400,
+   "parent": "managed",
+   "label_pos": "bottom"
+  },
+  {
+   "id": "iam",
+   "label": "AWS IAM",
+   "sub": "least-privilege roles",
+   "icon": "identity_and_access_management",
+   "cx": 330,
+   "top": 775,
+   "parent": "sec",
+   "label_pos": "bottom"
+  },
+  {
+   "id": "kms",
+   "label": "AWS KMS",
+   "sub": "encryption keys",
+   "icon": "key_management_service",
+   "cx": 530,
+   "top": 775,
+   "parent": "sec",
+   "label_pos": "bottom"
+  },
+  {
+   "id": "cw",
+   "label": "Amazon CloudWatch",
+   "sub": "logs and alarms",
+   "icon": "cloudwatch_2",
+   "cx": 730,
+   "top": 775,
+   "parent": "sec",
+   "label_pos": "bottom"
+  }
+ ],
+ "edges": [
+  {
+   "id": "e1",
+   "from": "user",
+   "to": "cf",
+   "exit": "R",
+   "entry": "L",
+   "label": "",
+   "dashed": false
+  },
+  {
+   "id": "e2",
+   "from": "cf",
+   "to": "apigw",
+   "exit": "R",
+   "entry": "L",
+   "label": "",
+   "dashed": false
+  },
+  {
+   "id": "e3",
+   "from": "apigw",
+   "to": "api",
+   "exit": "R",
+   "entry": "L",
+   "label": "",
+   "dashed": false
+  },
+  {
+   "id": "e4",
+   "from": "api",
+   "to": "sqs",
+   "exit": "R",
+   "entry": "L",
+   "label": "",
+   "dashed": false
+  },
+  {
+   "id": "e5",
+   "from": "sqs",
+   "to": "dlq",
+   "exit": "R",
+   "entry": "L",
+   "label": "after 3 tries",
+   "dashed": true
+  },
+  {
+   "id": "e6",
+   "from": "sqs",
+   "to": "worker",
+   "exit": "B",
+   "entry": "T",
+   "label": "queued order",
+   "dashed": false
+  },
+  {
+   "id": "e7",
+   "from": "worker",
+   "to": "aurora",
+   "exit": "B",
+   "entry": "T",
+   "label": "",
+   "dashed": false
+  },
+  {
+   "id": "e8",
+   "from": "worker",
+   "to": "ddb",
+   "exit": "R",
+   "entry": "L",
+   "label": "",
+   "dashed": false
+  }
+ ]
+}
