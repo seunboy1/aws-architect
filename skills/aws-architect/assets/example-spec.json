@@ -3,13 +3,13 @@
  "subtitle": "Generic example for the aws-architect skill",
  "footnote": "Managed services sit outside the VPC; only the worker that needs the database runs inside it.",
  "canvas": {
-  "width": 1520,
+  "width": 1900,
   "height": 960
  },
  "groups": [
   {
    "id": "acct",
-   "label": "AWS account \u00b7 production",
+   "label": "AWS account · production",
    "kind": "account",
    "x": 200,
    "y": 60,
@@ -19,7 +19,7 @@
   },
   {
    "id": "edge",
-   "label": "Edge and API \u00b7 outside the VPC",
+   "label": "Edge and API · outside the VPC",
    "kind": "zone",
    "x": 230,
    "y": 100,
@@ -49,7 +49,7 @@
   },
   {
    "id": "managed",
-   "label": "Managed services \u00b7 outside the VPC",
+   "label": "Managed services · outside the VPC",
    "kind": "zone",
    "x": 1160,
    "y": 310,
@@ -59,7 +59,7 @@
   },
   {
    "id": "sec",
-   "label": "Security and observability \u00b7 applies to everything",
+   "label": "Security and observability · applies to everything",
    "kind": "zone",
    "x": 230,
    "y": 745,
@@ -198,7 +198,8 @@
    "exit": "R",
    "entry": "L",
    "label": "",
-   "dashed": false
+   "dashed": false,
+   "step": 1
   },
   {
    "id": "e2",
@@ -207,7 +208,8 @@
    "exit": "R",
    "entry": "L",
    "label": "",
-   "dashed": false
+   "dashed": false,
+   "step": 2
   },
   {
    "id": "e3",
@@ -216,7 +218,8 @@
    "exit": "R",
    "entry": "L",
    "label": "",
-   "dashed": false
+   "dashed": false,
+   "step": 3
   },
   {
    "id": "e4",
@@ -225,7 +228,8 @@
    "exit": "R",
    "entry": "L",
    "label": "",
-   "dashed": false
+   "dashed": false,
+   "step": 4
   },
   {
    "id": "e5",
@@ -234,7 +238,8 @@
    "exit": "R",
    "entry": "L",
    "label": "after 3 tries",
-   "dashed": true
+   "dashed": true,
+   "step": 7
   },
   {
    "id": "e6",
@@ -243,7 +248,8 @@
    "exit": "B",
    "entry": "T",
    "label": "queued order",
-   "dashed": false
+   "dashed": false,
+   "step": 5
   },
   {
    "id": "e7",
@@ -252,7 +258,8 @@
    "exit": "B",
    "entry": "T",
    "label": "",
-   "dashed": false
+   "dashed": false,
+   "step": 6
   },
   {
    "id": "e8",
@@ -261,7 +268,22 @@
    "exit": "R",
    "entry": "L",
    "label": "",
-   "dashed": false
+   "dashed": false,
+   "step": 6
   }
- ]
+ ],
+ "flow": {
+  "x": 1510,
+  "y": 60,
+  "w": 360,
+  "steps": [
+   "A customer places an order in the browser or mobile app.",
+   "CloudFront passes the request to API Gateway.",
+   "API Gateway calls the order API.",
+   "The API puts the order on the queue and answers at once.",
+   "The worker takes the order off the queue.",
+   "The worker saves the order and updates its status.",
+   "An order that fails three times goes to the dead-letter queue for a person to check."
+  ]
+ }
 }

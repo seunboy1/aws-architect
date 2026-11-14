@@ -36,7 +36,7 @@ Write three small tables in chat and wait for a yes (or corrections):
 - **Groups:** account, VPC, public and private subnets, "managed services outside the VPC", "security and observability".
 - **Arrows:** from, to, label (1-3 words), solid or dashed (async, return or redrive paths are dashed).
 
-This is cheap to change now and expensive to change after layout. Also settle the main flow as a numbered sentence list; it decides the layout direction.
+This is cheap to change now and expensive to change after layout. Also settle the main flow as a numbered sentence list; it decides the layout direction and becomes the diagram's "How data flows" panel, with matching numbers on the arrows (`flow` in `references/spec-format.md`).
 
 Sanity-check the brief against how AWS works before drawing. If it contradicts itself (an "internal" load balancer in a public subnet reached from the internet, a managed service placed inside a subnet), raise it with the user, or record your assumption in the footnote and in your hand-off message. If the user insists on one diagram past the size budget, keep it, accept the linter's size warning, and say so.
 
@@ -87,5 +87,6 @@ When the user wants a cost estimate, deliver a public AWS Pricing Calculator lin
 1. Agree usage numbers in the same table style as step 2 (volumes per month, sizes, region). Unknown sizing gets a stated placeholder, marked "indicative".
 2. Write `usage.json`. Look up field ids with `python3 scripts/calculator_link.py --fields <serviceCode>`.
 3. `python3 scripts/calculator_link.py usage.json --dry-run` and read every printed line: units such as "million per month" live there, and a wrong one inflates the estimate a millionfold.
-4. Post it (`python3 scripts/calculator_link.py usage.json`), then **price it in a browser**: open the link, click *Update estimate*, check each line against list prices, click *Share* and give the user that second link. A link that skips this opens read-only showing $0.00. With no browser tool, give the user the first link and these three clicks to do themselves (open, *Update estimate*, *Share*), and say the totals are unpriced.
-5. Deliver the final link, the monthly and 12-month totals, each line's cost, the assumptions, and any line that looks wrong.
+4. Post it (`python3 scripts/calculator_link.py usage.json`), then **price it in a browser**: open the link, reload, click *Update estimate*, click *Share* and copy that second link. A link that skips this opens read-only showing $0.00. With no browser tool, give the user the first link and these three clicks to do themselves (open, *Update estimate*, *Share*), and say the totals are unpriced.
+5. **Verify the second link before anyone sees it:** `python3 scripts/calculator_link.py --check "<link>" usage.json` (quote the link). It fails if the link is unpriced, if any input from `usage.json` did not survive, or if a Bedrock model line differs from AWS's official Price List; it flags $0 lines to confirm. Fix and repeat until it prints `OK: safe to send.` Never deliver a link that has not passed, and never explain a surprising price as a calculator bug until `--check` or the official price list says so.
+6. Deliver the final link, the monthly and 12-month totals, each line's cost, the assumptions, what the calculator cannot price (for example Bedrock Guardrails), and the `--check` result.

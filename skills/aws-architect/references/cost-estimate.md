@@ -13,7 +13,18 @@ request in the browser (network tab, `saveAs`) and compare its body with `--dry-
 link must be priced once in a browser: open it, reload, click *Update estimate*, wait for every
 row to say "Cost updated" (a $0 free-tier row may stay "-"), then *Share* > *Agree and continue*
 and copy the new link from the dialog's text field. The AWS sales chat bubble covers the Agree
-button; remove `#chatbot-wrapper` first. Open the final link once more to confirm the totals.
+button; remove `#chatbot-wrapper` first. When pricing several estimates in one browser tab, reload
+before each one: the previous Share dialog stays open and blocks the next click.
+
+**Then run `--check` on the shared link** (`calculator_link.py --check "<link>" usage.json`). It reads
+the priced estimate back from `d3knqfixx3sbls.cloudfront.net/<id>` (the file calculator.aws itself
+loads), and fails when:
+- the estimate is unpriced ($0 total);
+- a service in `usage.json` is missing or one of its inputs is not what the file asked for;
+- a Bedrock model line differs by more than 2% from the same tokens priced with AWS's official
+  Price List (`pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonBedrockFoundationModels/current/<region>/index.json`).
+It also flags each $0 line (free tier, or a line the website did not price) for you to confirm.
+A link is ready only after `OK: safe to send.`
 
 ## usage.json
 
@@ -37,7 +48,12 @@ button; remove `#chatbot-wrapper` first. Open the final link once more to confir
   for pay-as-you-go). `--fields <code>` lists them.
 - `fields`: `id: value` or `id: [value, unit]`. Units: frequency fields take the option id
   (`perMonth`); size fields take `gb`, `tb`, `mb` or `kb`; the script appends the period.
+  A dropdown takes the option id or its exact label (`"Anthropic: Claude Sonnet 5.5"`).
   Fields you leave out get the website's defaults (dropdown first option, prefilled numbers).
+- The script refuses, with the reason: unknown keys anywhere in the file, an unknown region,
+  a number given as text, a unit or dropdown value the field does not offer, a decimal in a
+  whole-number field, a value outside the field's range. The website accepts all of these
+  silently and prices them wrong, which is why they fail here.
 - `region` per service overrides the top-level one. Check the service exists there:
   `curl -s https://d1qsjq9pzbk1k6.cloudfront.net/manifest/regionList/publish.json` maps each
   service code to its regions (Local Zones appear as codes such as `af-south-1-los-1`).
@@ -65,6 +81,19 @@ startups).
 - API Gateway multiplies requests by `RESTMult` / `APIOpsMult` (defaults: millions for HTTP,
   set `"RESTMult": "1"` for an exact REST count).
 - S3 storage is `[GB, "gb"]` per month; DynamoDB storage is total GB.
+- Some numbers must be whole (Bedrock "requests per minute", Lambda duration). The website ignores a
+  decimal and prices the line as if it were empty; the script refuses it. For low volume, use
+  1 request per minute and fewer "hours per day".
+- Bedrock models (`anthropic` and the other provider codes): set the route (`location`: `global`,
+  `geo` for cross-Region within a geography such as the EU, or `ir` for in-Region) and the route's
+  `modelSelection…`, `selectedModel…` and `selectedModel_od…` (suffix `""`, `Geostan` or `IRstan`).
+  Give all three the same label, e.g. `"Anthropic: Claude Sonnet 5.5"`; the script refuses a route
+  whose model is unset (it would default to the first model in the list) or dropdowns that disagree.
+  Model prices differ a lot between generations (in eu-west-1 on 2026-11-14: Haiku 5.5 $0.11 / $0.55,
+  Haiku 4.5 $1.10 / $5.50, Sonnet 5.5 $2.20 / $11.00 per 1M input / output tokens, Geo route);
+  `--check` compares the line with the official Price List, so trust it over intuition.
+- Bedrock Guardrails is not in the calculator; price it by hand from the Bedrock pricing page and
+  list it in the hand-off as an extra line.
 
 ## Field ids checked in a priced estimate (2026-11-08)
 
@@ -87,5 +116,6 @@ their lines by hand the first time. `assets/example-usage.json` is a full exampl
 
 Rekognition Image: the calculator showed $490 for 240k Group 1 calls plus 1M stored faces in
 eu-west-1, while its own price table gives $0.001 per image and $0.00001 per face-month (about
-$250). Same result when the form is filled by hand, so it is the calculator, not the script.
-Tell the user rather than adjusting the numbers.
+$250). Same result when the form is filled by hand, and the official Price List confirms those unit
+prices (checked 2026-11-14), so the calculator's line is about double. Tell the user the Rekognition
+line may be overstated rather than adjusting the numbers.

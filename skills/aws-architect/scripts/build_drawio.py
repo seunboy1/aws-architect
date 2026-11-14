@@ -11,6 +11,7 @@ Exit code 1 means errors; warnings do not fail the build.
 """
 import json
 import sys
+from html import escape
 from xml.sax.saxutils import quoteattr
 
 # category -> (fill, gradient)
@@ -78,7 +79,13 @@ GROUPS = {
 BOX_STYLE = "rounded=1;arcSize=8;whiteSpace=wrap;html=1;fillColor=#F2F4F7;strokeColor=#5F6B7A;fontColor=#232F3E;fontSize=12;"
 TEXT_STYLE = "text;html=1;align=left;verticalAlign=middle;whiteSpace=wrap;fontColor=#232F3E;"
 EDGE_BASE = ("edgeStyle=orthogonalEdgeStyle;rounded=1;orthogonalLoop=1;jettySize=auto;html=1;strokeColor=#545B64;"
-             "strokeWidth=1.5;endArrow=block;endFill=1;endSize=5;fontSize=10;fontColor=#545B64;labelBackgroundColor=#FFFFFF;")
+             "strokeWidth=1.5;endArrow=block;endFill=1;endSize=5;fontSize=10;fontColor=#545B64;labelBackgroundColor=#FFFFFF;"
+             "flowAnimation=1;flowAnimationDuration=2000;")  # every connector shows slow moving dashes in the flow direction
+CANVAS = {"width": 1900, "height": 1260}
+FLOW_STYLE = ("rounded=1;arcSize=3;whiteSpace=wrap;html=1;fillColor=#F8F9FA;strokeColor=#D5DBDB;fontColor=#232F3E;"
+              "fontSize=11;align=left;verticalAlign=top;spacingLeft=12;spacingRight=12;spacingTop=6;")
+BADGE = ('<span style="background-color:#232F3E;color:#FFFFFF;border-radius:9px;padding:1px 6px;'
+         'font-weight:bold;font-size:10px;">{}</span>')
 PORTS = {"R": (1, 0.5), "L": (0, 0.5), "T": (0.5, 0), "B": (0.5, 1)}
 SIZE = 60
 
@@ -135,14 +142,91 @@ def edge_points(e, nodes):
     return [(ax + px * aw, ay + py * ah)] + [tuple(v) for v in e.get("via", [])] + [(bx + qx * bw, by + qy * bh)]
 
 
+def flow_rect(spec):
+    """Box of the 'How data flows' panel; its height is estimated from the text so the lint can place it."""
+    f = spec["flow"]
+    per_line = max(1, (f["w"] - 60) / 5.6)
+    h = 40 + sum(-(-len(t) // per_line) * 14 + 9 for t in f["steps"])
+    return (f["x"], f["y"], f["w"], h)
+
+
+NUM = (int, float)
+# key -> (required, type); a misspelled key fails instead of being ignored
+SHAPE = {
+    "spec": {"title": (False, str), "subtitle": (False, str), "footnote": (False, str), "canvas": (False, dict),
+             "groups": (False, list), "nodes": (True, list), "edges": (False, list), "flow": (False, dict)},
+    "canvas": {"width": (True, NUM), "height": (True, NUM)},
+    "group": {"id": (True, str), "label": (True, str), "kind": (False, str), "x": (True, NUM), "y": (True, NUM),
+              "w": (True, NUM), "h": (True, NUM), "parent": (False, (str, type(None))), "depth": (False, int)},
+    "icon": {"id": (True, str), "label": (True, str), "sub": (False, str), "icon": (True, str), "cx": (True, NUM),
+             "top": (True, NUM), "parent": (False, (str, type(None))), "label_pos": (False, str)},
+    "box": {"id": (True, str), "label": (True, str), "sub": (False, str), "box": (True, bool), "x": (True, NUM),
+            "y": (True, NUM), "w": (True, NUM), "h": (True, NUM), "parent": (False, (str, type(None)))},
+    "edge": {"id": (True, str), "from": (True, str), "to": (True, str), "exit": (True, (str, list)),
+             "entry": (True, (str, list)), "via": (False, list), "label": (False, str), "dashed": (False, bool),
+             "hop": (False, bool), "step": (False, int)},
+    "flow": {"x": (True, NUM), "y": (True, NUM), "w": (True, NUM), "steps": (True, list), "title": (False, str)},
+}
+
+
+def shape(spec):
+    """Check every key and type in the spec before any geometry runs on it."""
+    errs = []
+
+    def check(obj, kind, where):
+        if not isinstance(obj, dict):
+            return errs.append(f"{where}: must be an object")
+        rules = SHAPE[kind]
+        for k in obj:
+            if k not in rules:
+                close = [r for r in rules if r.replace("_", "") == k.replace("_", "") or sorted(r) == sorted(k)]
+                errs.append(f"{where}: unknown key {k!r}" + (f" (did you mean {close[0]!r}?)" if close else
+                                                           f"; allowed: {', '.join(rules)}"))
+        for k, (required, typ) in rules.items():
+            if k not in obj:
+                if required:
+                    errs.append(f"{where}: missing {k!r}")
+            elif isinstance(obj[k], bool) and typ is NUM or not isinstance(obj[k], typ):
+                errs.append(f"{where}: {k!r} has the wrong type ({type(obj[k]).__name__})")
+
+    check(spec, "spec", "spec")
+    if errs or not isinstance(spec, dict):
+        return errs
+    if "canvas" in spec:
+        check(spec["canvas"], "canvas", "canvas")
+    for g in spec.get("groups", []):
+        check(g, "group", f"group {g.get('id') if isinstance(g, dict) else g!r}")
+    for n in spec["nodes"]:
+        check(n, "box" if isinstance(n, dict) and n.get("box") else "icon", f"node {n.get('id') if isinstance(n, dict) else n!r}")
+    for e in spec.get("edges", []):
+        check(e, "edge", f"edge {e.get('id') if isinstance(e, dict) else e!r}")
+        for side in ("exit", "entry"):
+            v = e.get(side) if isinstance(e, dict) else None
+            if isinstance(v, str) and v not in PORTS or isinstance(v, list) and not (
+                    len(v) == 2 and all(isinstance(x, NUM) and 0 <= x <= 1 for x in v)):
+                errs.append(f"edge {e.get('id')}: {side} must be R, L, T, B or [x, y] fractions from 0 to 1")
+        for pt in e.get("via", []) if isinstance(e, dict) and isinstance(e.get("via"), list) else []:
+            if not (isinstance(pt, list) and len(pt) == 2 and all(isinstance(x, NUM) for x in pt)):
+                errs.append(f"edge {e.get('id')}: via points must be [x, y] numbers, got {pt!r}")
+    if "flow" in spec:
+        check(spec["flow"], "flow", "flow")
+        if not all(isinstance(t, str) and t.strip() for t in spec["flow"].get("steps", [])):
+            errs.append("flow: every step must be a non-empty sentence")
+    return errs
+
+
 def lint(spec):
-    errs, warns = [], []
+    errs, warns = shape(spec), []
+    if errs:
+        return errs, warns
     nodes = {n["id"]: n for n in spec.get("nodes", [])}
     groups = {g["id"]: g for g in spec.get("groups", [])}
     ids = [x["id"] for x in spec.get("nodes", []) + spec.get("groups", []) + spec.get("edges", [])]
     for i in {i for i in ids if ids.count(i) > 1}:
         errs.append(f"duplicate id: {i}")
-    canvas = spec.get("canvas", {"width": 1900, "height": 1260})
+    canvas = spec.get("canvas", CANVAS)
+    if not spec.get("flow"):
+        warns.append("no flow panel: add a 'flow' with the numbered steps agreed in the interview (references/spec-format.md)")
     grect = {k: (g["x"], g["y"], g["w"], g["h"]) for k, g in groups.items()}
     if len(nodes) > 14 or len(spec.get("edges", [])) > 12:
         warns.append(f"{len(nodes)} nodes and {len(spec.get('edges', []))} edges is over the budget (14 / 12); consider an overview plus detail diagrams")
@@ -156,10 +240,10 @@ def lint(spec):
             errs.append(f"group {g['id']} sticks out of its parent {g['parent']}")
     items = []  # (id, kind, rect)
     for n in nodes.values():
-        if n.get("box") is None and n.get("icon") not in ICONS:
+        if not n.get("box") and n.get("icon") not in ICONS:
             errs.append(f"node {n['id']}: icon '{n.get('icon')}' is not in the icon table (references/icons.md)")
-        elif not n.get("box") and not ICONS[n["icon"]][2]:
-            warns.append(f"node {n['id']}: icon '{n['icon']}' has not been seen to render; check it in the preview")
+        if n.get("label_pos", "bottom") not in ("bottom", "top", "left"):
+            errs.append(f"node {n['id']}: label_pos '{n['label_pos']}' is not supported (use bottom, top or left)")
         if len(n["label"]) > 28 or len(n.get("sub", "")) > 40:
             warns.append(f"node {n['id']}: label is long; shorten it so it stays under its neighbours")
         r, lr = node_rect(n), label_rect(n)
@@ -173,6 +257,22 @@ def lint(spec):
         items.append((n["id"], "icon", r))
         if lr:
             items.append((n["id"], "label", lr))
+    if spec.get("flow"):
+        fr = flow_rect(spec)
+        if fr[0] < 0 or fr[1] < 0 or fr[0] + fr[2] > canvas["width"] or fr[1] + fr[3] > canvas["height"] - 60:
+            errs.append(f"flow panel does not fit the canvas (needs {fr[2]:.0f}x{fr[3]:.0f} at {fr[0]},{fr[1]}, above the footnote)")
+        for oid, kind, rr in items + [(g, "group", r) for g, r in grect.items()]:
+            if overlap(fr, rr):
+                errs.append(f"flow panel overlaps the {kind} of {oid}; put it beside the diagram")
+        for e in spec.get("edges", []):
+            if e.get("from") in nodes and e.get("to") in nodes and "exit" in e and "entry" in e:
+                pts = edge_points(e, nodes)
+                if any(seg_hits(p, q, fr) for p, q in zip(pts, pts[1:])):
+                    errs.append(f"edge {e['id']} runs through the flow panel")
+    steps = len(spec.get("flow", {}).get("steps", []))
+    for e in spec.get("edges", []):
+        if "step" in e and not (isinstance(e["step"], int) and 1 <= e["step"] <= steps):
+            errs.append(f"edge {e['id']}: step {e['step']!r} has no line in flow.steps (1..{steps})")
     for i, (ia, ka, ra) in enumerate(items):
         for ib, kb, rb in items[i + 1:]:
             if ia != ib and overlap(ra, rb):
@@ -213,6 +313,7 @@ def lint(spec):
 def build(spec):
     abs_pos = {"1": (0, 0)}
     cells, edge_cells = [], []
+    c = spec.get("canvas", CANVAS)
 
     def vertex(cid, value, style, x, y, w, h, parent):
         px, py = abs_pos.get(parent or "1", (0, 0))
@@ -221,15 +322,15 @@ def build(spec):
                      f'<mxGeometry x="{x - px}" y="{y - py}" width="{w}" height="{h}" as="geometry"/></mxCell>')
 
     def lab(n):
-        v = f"<b>{n['label']}</b>"
-        return v + (f'<br><font color="#545B64" style="font-size:10px">{n["sub"]}</font>' if n.get("sub") else "")
+        v = f"<b>{escape(n['label'], quote=False)}</b>"  # html=1 renders labels as HTML, so escape the text
+        return v + (f'<br><font color="#545B64" style="font-size:10px">{escape(n["sub"], quote=False)}</font>' if n.get("sub") else "")
 
     if spec.get("title"):
-        vertex("title", f"<b>{spec['title']}</b>", TEXT_STYLE + "fontSize=18;", 40, 2, 1100, 30, "1")
+        vertex("title", f"<b>{escape(spec['title'], quote=False)}</b>", TEXT_STYLE + "fontSize=18;", 40, 2, 1100, 30, "1")
     if spec.get("subtitle"):
-        vertex("subtitle", spec["subtitle"], TEXT_STYLE + "fontSize=11;fontColor=#545B64;", 40, 24, 1400, 20, "1")
+        vertex("subtitle", escape(spec["subtitle"], quote=False), TEXT_STYLE + "fontSize=11;fontColor=#545B64;", 40, 24, 1400, 20, "1")
     for g in sorted(spec.get("groups", []), key=lambda g: g.get("depth", 0)):  # parents are listed first
-        vertex(g["id"], g["label"], GROUPS[g.get("kind", "zone")], g["x"], g["y"], g["w"], g["h"], g.get("parent"))
+        vertex(g["id"], escape(g["label"], quote=False), GROUPS[g.get("kind", "zone")], g["x"], g["y"], g["w"], g["h"], g.get("parent"))
     for n in spec.get("nodes", []):
         if n.get("box"):
             vertex(n["id"], lab(n), BOX_STYLE, n["x"], n["y"], n["w"], n["h"], n.get("parent"))
@@ -256,13 +357,20 @@ def build(spec):
         s += "jumpStyle=arc;jumpSize=10;" if e.get("hop") else ""
         via = "".join(f'<mxPoint x="{x}" y="{y}"/>' for x, y in e.get("via", []))
         geo = '<Array as="points">' + via + "</Array>" if via else ""
-        edge_cells.append(f'<mxCell id="{e["id"]}" value={quoteattr(e.get("label", ""))} style={quoteattr(s)} edge="1" parent="1" '
+        value = escape(e.get("label", ""), quote=False)
+        if e.get("step"):  # numbered badge that matches the flow panel
+            value = BADGE.format(e["step"]) + ("&nbsp;" + value if value else "")
+        edge_cells.append(f'<mxCell id="{e["id"]}" value={quoteattr(value)} style={quoteattr(s)} edge="1" parent="1" '
                           f'source="{e["from"]}" target="{e["to"]}"><mxGeometry relative="1" as="geometry">'
                           f'{geo}</mxGeometry></mxCell>')
+    if spec.get("flow"):
+        x, y, w, h = flow_rect(spec)
+        body = "".join(f'<div style="margin-top:8px">{BADGE.format(i)}&nbsp; {escape(t, quote=False)}</div>'
+                       for i, t in enumerate(spec["flow"]["steps"], 1))
+        vertex("flow", f'<b style="font-size:13px">{escape(spec["flow"].get("title", "How data flows"), quote=False)}</b>{body}',
+               FLOW_STYLE, x, y, w, h, "1")
     if spec.get("footnote"):
-        c = spec.get("canvas", {"width": 1900, "height": 1260})
-        vertex("footnote", spec["footnote"], TEXT_STYLE + "fontSize=10;fontColor=#545B64;", 40, c["height"] - 50, c["width"] - 80, 30, "1")
-    c = spec.get("canvas", {"width": 1900, "height": 1260})
+        vertex("footnote", escape(spec["footnote"], quote=False), TEXT_STYLE + "fontSize=10;fontColor=#545B64;", 40, c["height"] - 50, c["width"] - 80, 30, "1")
     return ('<mxfile host="app.diagrams.net"><diagram id="arch" name="Architecture">'
             f'<mxGraphModel dx="{c["width"]}" dy="{c["height"]}" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" '
             f'fold="1" page="1" pageScale="1" pageWidth="{c["width"]}" pageHeight="{c["height"]}" math="0" shadow="0"><root>'
@@ -274,8 +382,10 @@ def depth_sort(spec):
     """Order groups so a parent always comes before its children."""
     by_id = {g["id"]: g for g in spec.get("groups", [])}
 
-    def d(g):
-        return 0 if not g.get("parent") or g["parent"] not in by_id else 1 + d(by_id[g["parent"]])
+    def d(g, seen=()):
+        if g["id"] in seen:
+            raise SystemExit(f"group {g['id']}: parent loop ({' > '.join(seen)} > {g['id']})")
+        return 0 if not g.get("parent") or g["parent"] not in by_id else 1 + d(by_id[g["parent"]], seen + (g["id"],))
     for g in by_id.values():
         g["depth"] = d(g)
     return spec
@@ -286,8 +396,17 @@ def main(argv):
     if not args or ("--lint-only" not in argv and len(args) < 2):
         print(__doc__)
         return 2
-    spec = depth_sort(json.load(open(args[0], encoding="utf-8")))
-    errs, warns = lint(spec)
+    try:
+        spec = json.load(open(args[0], encoding="utf-8"))
+    except json.JSONDecodeError as e:
+        print(f"ERROR {args[0]} is not valid JSON: {e}")
+        return 1
+    errs = shape(spec)
+    if not errs:
+        spec = depth_sort(spec)
+        errs, warns = lint(spec)
+    else:
+        warns = []
     for w in warns:
         print("WARN ", w)
     for e in errs:

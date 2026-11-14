@@ -12,4 +12,7 @@ When the user asks for an AWS architecture diagram, a draw.io diagram of a cloud
 - Keep instructions neutral across agents. Name a tool (Playwright, a question tool) only as an example.
 - Scripts use the Python 3 standard library only. Run both tests before publishing:
   `python3 skills/aws-architect/scripts/test_build.py` and `python3 skills/aws-architect/scripts/test_calculator_link.py`.
-- Keep the version the same in `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.cursor-plugin/plugin.json` and `gemini-extension.json`.
+- Add a `CHANGELOG.md` entry for each release. Keep the version the same in `.claude-plugin/plugin.json`, `.codex-plugin/plugin.json`, `.cursor-plugin/plugin.json` and `gemini-extension.json`. `python3 check_package.py` fails when they differ.
+- Each release needs a fresh `aws-architect.skill` (Claude desktop and claude.ai install it from the release):
+  `mkdir -p dist && rm -f dist/aws-architect.skill && (cd skills && zip -qr ../dist/aws-architect.skill aws-architect -x '*/__pycache__/*' '*.DS_Store')`,
+  then `gh release create vX.Y.Z dist/aws-architect.skill`.

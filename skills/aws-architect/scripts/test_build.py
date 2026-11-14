@@ -8,6 +8,7 @@ spec = b.depth_sort(json.load(open(os.path.join(os.path.dirname(__file__), "..",
 errs, warns = b.lint(spec)
 assert not errs and not warns, (errs, warns)
 md.parseString(b.build(spec))  # well-formed XML
+assert b.build(spec).count("flowAnimation=1;flowAnimationDuration=2000;") == len(spec["edges"])  # every line animates slowly
 
 
 def bad(change):
@@ -32,4 +33,33 @@ s2 = copy.deepcopy(spec); title_clash(s2)
 assert any("title of group" in w for w in b.lint(b.depth_sort(s2))[1])
 s3 = copy.deepcopy(spec); s3["footnote"] = "x" * 900
 assert any("footnote" in w for w in b.lint(b.depth_sort(s3))[1])
+assert any("label_pos" in e for e in bad(lambda s: s["nodes"][1].update(label_pos="right")))
+assert any("'icon' has the wrong type" in e for e in bad(lambda s: s["nodes"][1].update(box=False, icon=None)))
+s4 = copy.deepcopy(spec); s4["nodes"][1]["label"] = "Orders <API> & more"
+out = b.build(s4); md.parseString(out)
+assert "&amp;lt;API&amp;gt;" in out and "<API>" not in out  # escaped for HTML, then for XML
+s5 = copy.deepcopy(spec); s5["groups"][0]["parent"] = s5["groups"][1]["id"]; s5["groups"][1]["parent"] = s5["groups"][0]["id"]
+try:
+    b.depth_sort(s5); raise AssertionError("parent loop accepted")
+except SystemExit as e:
+    assert "parent loop" in str(e)
+out = b.build(spec)  # the example carries a flow panel and numbered arrows
+assert "How data flows" in out and out.count("border-radius:9px") == len(spec["flow"]["steps"]) + len(spec["edges"])
+s6 = copy.deepcopy(spec); s6["flow"]["steps"][0] = "Customer types <b>"
+assert "&amp;lt;b&amp;gt;" in b.build(s6)
+assert any("no line in flow.steps" in e for e in bad(lambda s: s["edges"][0].update(step=99)))
+assert any("flow panel overlaps" in e for e in bad(lambda s: s["flow"].update(x=1300)))
+assert any("does not fit" in e for e in bad(lambda s: s["flow"].update(y=800)))
+# shape: misspelled keys, wrong types and bad ports fail before any geometry runs
+assert any("did you mean 'label_pos'" in e for e in bad(lambda s: s["nodes"][1].update(lable_pos="top")))
+assert any("missing 'cx'" in e for e in bad(lambda s: s["nodes"][1].pop("cx")))
+assert any("wrong type" in e for e in bad(lambda s: s["nodes"][1].update(cx="300")))
+assert any("exit must be" in e for e in bad(lambda s: s["edges"][0].update(exit="X")))
+assert any("exit must be" in e for e in bad(lambda s: s["edges"][0].update(exit=[1.5, 0])))
+assert any("via points" in e for e in bad(lambda s: s["edges"][0].update(via=[[1, "a"]])))
+assert any("wrong type" in e for e in bad(lambda s: s["edges"][0].update(step="1")))
+assert any("non-empty sentence" in e for e in bad(lambda s: s["flow"]["steps"].append("")))
+assert any("unknown key 'colour'" in e for e in b.shape({**spec, "colour": "red"}))
+s7 = copy.deepcopy(spec); s7.pop("flow")
+assert any("no flow panel" in w for w in b.lint(b.depth_sort(s7))[1])
 print("all checks passed")

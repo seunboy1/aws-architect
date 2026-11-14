@@ -14,8 +14,8 @@ Start it with a plain request ("draw the AWS architecture for this", "how much w
 1. **Kicks off** by asking what you have (a call transcript, a SOW or design doc, a Terraform/CDK repo, or nothing), whether you want a diagram, a cost estimate or both, the customer's stage (startup, growing, enterprise) and the Region.
 2. **Interviews** you with short batches of questions tuned to your role (DevOps, solutions architect, AI/ML, data, security, developer, executive), pre-filled from whatever you gave it.
 3. **Plays back** the components, groups and arrows as tables and waits for your yes.
-4. **Builds** the diagram with a script, lints it for overlaps and crossed lines, and looks at the render before handing it over.
-5. **Prices** it: agrees usage numbers with you, posts the estimate to calculator.aws, reprices it in a browser and gives you the final share link with per-service costs.
+4. **Builds** the diagram with a script, checks the spec for typos and the layout for overlaps and crossed lines, and looks at the render before handing it over. Every connector has a slow flow animation, and a numbered **How data flows** panel beside the diagram explains each step, with matching numbers on the arrows.
+5. **Prices** it: agrees usage numbers with you, posts the estimate to calculator.aws, reprices it in a browser, then **verifies the final link** with `--check`: every input must survive, and model lines must match AWS's official Price List. You get the link only after it passes.
 
 ## Install
 

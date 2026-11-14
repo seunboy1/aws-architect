@@ -9,7 +9,7 @@ These came from diagrams that looked wrong and were fixed. The linter enforces t
 5. **No line through anything.** Connectors must not cross another icon or its label. Route round it with `via` points. *
 6. **Orthogonal lines only.** Every segment horizontal or vertical; give explicit `exit`, `entry` and `via`. Diagonal or unspecified routes make draw.io guess. *
 7. **Crossings.** Avoid them. If unavoidable, set `hop: true` on the less important line.
-8. **Dashed means not the main path:** asynchronous, return, redrive, optional.
+8. **Every line is animated; dashed means not the main path.** The script gives every connector draw.io's flow animation (moving dashes in the arrow's direction, a slow 2-second cycle), so the picture shows which way data moves. Set `dashed: true` for asynchronous, return, redrive or optional paths; they animate too but keep a thinner, longer dash.
 9. **Edge labels are 1-3 words** ("webhook", "queued message", "writes PDF"). If a label needs a sentence, put it in the footnote.
 10. **No overlaps; stay inside the parent.** *
 11. **Budget.** About 14 icons and 12 arrows per diagram. Past that, split into overview plus detail.
