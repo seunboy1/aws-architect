@@ -42,11 +42,13 @@ _cache = {}
 
 
 def fetch(url):
+    if not url.startswith("https://"):  # only the fixed AWS endpoints above, never file:// or other schemes
+        raise SystemExit(f"refusing to fetch a non-https URL: {url}")
     if url not in _cache:
         req = urllib.request.Request(url, headers={"User-Agent": "aws-architect-skill"})
         for attempt in range(3):  # the CDN resets connections now and then
             try:
-                with urllib.request.urlopen(req, timeout=30) as r:
+                with urllib.request.urlopen(req, timeout=30) as r:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected
                     raw = r.read()
                 break
             except urllib.error.HTTPError:
@@ -298,7 +300,7 @@ def post(payload):
     req = urllib.request.Request(SAVE_URL, data=json.dumps(payload).encode(), method="POST",
                                  headers={"content-type": "application/json",
                                           "referer": "https://calculator.aws/"})
-    with urllib.request.urlopen(req, timeout=30) as r:
+    with urllib.request.urlopen(req, timeout=30) as r:  # nosemgrep: python.lang.security.audit.dynamic-urllib-use-detected.dynamic-urllib-use-detected  (SAVE_URL is a fixed https constant)
         body = json.load(r)
     key = json.loads(body["body"])["savedKey"]
     return f"https://calculator.aws/#/estimate?id={key}"
