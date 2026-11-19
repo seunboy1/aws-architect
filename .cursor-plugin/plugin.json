@@ -1,7 +1,7 @@
 {
   "name": "aws-architect",
   "description": "Turn a call transcript, SOW or a few questions into an editable AWS architecture diagram (draw.io) and a shareable AWS Pricing Calculator link.",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "author": {"name": "Oluwaseun Adeyo"},
   "homepage": "https://github.com/seunboy1/aws-architect",
   "repository": "https://github.com/seunboy1/aws-architect",

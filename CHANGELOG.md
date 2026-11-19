@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1 (2026-11-19)
+
+- Before drawing, the agent shows the services layer by layer with the reason for each and the alternative it set aside, and lists every service it picked by default.
+- The diagram is built only after a yes to tables shown in the agent's last message. If the conversation moved on, or the design changed after the yes, the agent shows them again first.
+
 ## 1.1.0 (2026-11-14)
 
 - Diagrams: every connector has a slow flow animation; a numbered "How data flows" panel sits beside the diagram, with matching number badges on the arrows.

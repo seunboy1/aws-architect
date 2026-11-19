@@ -32,9 +32,11 @@ If the system is too big for one readable picture (more than about 14 icons), pr
 
 Write three small tables in chat and wait for a yes (or corrections):
 
-- **Nodes:** name, AWS service, one-line role, which group it sits in.
+- **Nodes, layer by layer** (users, sign-in, web and API, compute, data, AI, observability): name, AWS service, one-line role, which group it sits in, and why this service with the alternative you set aside ("Amplify Hosting, not CloudFront + S3: deploys from Git").
 - **Groups:** account, VPC, public and private subnets, "managed services outside the VPC", "security and observability".
 - **Arrows:** from, to, label (1-3 words), solid or dashed (async, return or redrive paths are dashed).
+
+Under the tables, list each service you picked by default; never draw a default silently. The yes must answer tables shown in your last message: if the user moved to other work and comes back, or the spec later differs from what was agreed, show them again and wait.
 
 This is cheap to change now and expensive to change after layout. Also settle the main flow as a numbered sentence list; it decides the layout direction and becomes the diagram's "How data flows" panel, with matching numbers on the arrows (`flow` in `references/spec-format.md`).
 
